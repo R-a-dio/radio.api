@@ -8,12 +8,21 @@ import peewee
 
 logger = logging.getLogger(__name__)
 
+def monkey_connect():
+    import sqlite3
+    connect = sqlite3.connect
+    def monkey_patch(*args, **kwargs):
+        conn = connect(*args, **kwargs)
+        conn.text_factory = lambda data: unicode(data, "utf-8", "ignore")
+        return conn
+    sqlite3.connect = monkey_patch
+monkey_connect()
 
 class Base(peewee.Model):
     """Simple base class to inherit from so all the other models
     inherit the database connection used."""
     class Meta:
-        database = None
+        database = peewee.SqliteDatabase("database.db")
 
 
 class DJ(Base):
@@ -266,20 +275,16 @@ class Queue(Base):
 
     time = peewee.DateTimeField()
 
-    song = peewee.ForeignKeyField(Song,
-                                  related_name='queued',
-                                  db_column='song')
+    meta = peewee.TextField(null=True)
+
+    length = peewee.IntegerField(default=0)
 
     track = peewee.ForeignKeyField(Track,
                                    related_name='queued',
                                    null=True,
-                                   db_column='track')
+                                   db_column='trackid')
 
     ip = peewee.TextField(null=True)
-
-    dj = peewee.ForeignKeyField(DJ,
-                                related_name='queue',
-                                db_column='dj')
 
     class Meta:
         db_table = 'queue'
